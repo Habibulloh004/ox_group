@@ -7,11 +7,11 @@ import { GetProductsDto } from './dto/product.dto';
 
 @Controller('products')
 @UseGuards(JwtAuthGuard, RolesGuard)
+@ManagerOnly() // Only managers can access products
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
   @Get()
-  @ManagerOnly()
   async getProducts(@Query() query: GetProductsDto, @Request() req) {
     return this.productService.getProducts(req.user.id, query.page, query.size);
   }

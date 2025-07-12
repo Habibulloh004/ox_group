@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { LoginDto, VerifyOtpDto } from './dto/auth.dto';
@@ -17,19 +17,32 @@ export class AuthService {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     
-    // Find or create user
-    const user = await this.prisma.user.upsert({
+    // Check if user exists
+    const existingUser = await this.prisma.user.findUnique({
       where: { email },
-      update: {
-        otp,
-        otpExpiry,
-      },
-      create: {
-        email,
-        otp,
-        otpExpiry,
-      },
     });
+
+    let user;
+    if (existingUser) {
+      // Update existing user with new OTP
+      user = await this.prisma.user.update({
+        where: { email },
+        data: {
+          otp,
+          otpExpiry,
+        },
+      });
+    } else {
+      // Create new user with default role MANAGER
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          otp,
+          otpExpiry,
+          role: 'MANAGER', // Default role as specified
+        },
+      });
+    }
 
     return {
       message: 'OTP sent successfully',
@@ -44,8 +57,8 @@ export class AuthService {
       where: { email },
     });
 
-    if (!user || user.otp !== otp || user.otpExpiry < new Date()) {
-      throw new Error('Invalid or expired OTP');
+    if (!user || user.otp !== otp || !user.otpExpiry || user.otpExpiry < new Date()) {
+      throw new BadRequestException('Invalid or expired OTP');
     }
 
     // Clear OTP after successful verification

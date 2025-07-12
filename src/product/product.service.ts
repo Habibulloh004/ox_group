@@ -11,6 +11,7 @@ export class ProductService {
   ) {}
 
   async getProducts(userId: string, page: number = 1, size: number = 10) {
+    // Check size limit
     if (size > 20) {
       throw new BadRequestException('Size cannot exceed 20');
     }
@@ -27,7 +28,7 @@ export class ProductService {
       throw new ForbiddenException('User is not associated with any company');
     }
 
-    // For simplicity, use the first company. In a real app, you might want to specify which company
+    // Use the first company (or you could let user specify which company)
     const company = userCompanies[0].company;
 
     try {

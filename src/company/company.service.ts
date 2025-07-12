@@ -38,6 +38,25 @@ export class CompanyService {
     });
 
     if (existingCompany) {
+      // Company exists - add user as MANAGER (not admin)
+      
+      // Check if user is already associated with this company
+      const existingUserCompany = await this.prisma.userCompany.findUnique({
+        where: {
+          userId_companyId: {
+            userId,
+            companyId: existingCompany.id,
+          },
+        },
+      });
+
+      if (existingUserCompany) {
+        return {
+          message: 'User is already a member of this company',
+          company: existingCompany,
+        };
+      }
+
       // Add user as manager to existing company
       await this.prisma.userCompany.create({
         data: {
@@ -52,19 +71,21 @@ export class CompanyService {
         company: existingCompany,
       };
     } else {
-      // Create new company and make user admin
+      // Company doesn't exist - create it and assign user as ADMIN
+      
+      // Update user role to ADMIN
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { role: 'ADMIN' },
+      });
+      
+      // Create new company
       const company = await this.prisma.company.create({
         data: {
           subdomain,
           token,
           adminId: userId,
         },
-      });
-      
-      // Update user role to admin
-      await this.prisma.user.update({
-        where: { id: userId },
-        data: { role: 'ADMIN' },
       });
       
       // Add user to company as admin
