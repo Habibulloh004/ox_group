@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  role      Role     @default(MANAGER)
+  otp       String?
+  otpExpiry DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  companies UserCompany[]
+  adminCompanies Company[] @relation("CompanyAdmin")
+  
+  @@map("users")
+}
+
+model Company {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  subdomain String   @unique
+  token     String
+  adminId   String   @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  admin User @relation("CompanyAdmin", fields: [adminId], references: [id])
+  users UserCompany[]
+  
+  @@map("companies")
+}
+
+model UserCompany {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  companyId String   @db.ObjectId
+  role      Role     @default(MANAGER)
+  createdAt DateTime @default(now())
+  
+  user    User    @relation(fields: [userId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  
+  @@unique([userId, companyId])
+  @@map("user_companies")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+}
